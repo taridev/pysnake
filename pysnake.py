@@ -3,13 +3,12 @@
 import pygame
 import sys
 import random
-import time
 
 
-WIDTH_IN_BLOCKS = 72
-HEIGHT_IN_BLOCKS = 48
-BLOCK_SIZE = 10
-DEFAULT_SPEED = 15
+WIDTH_IN_BLOCKS = 36
+HEIGHT_IN_BLOCKS = 24
+BLOCK_SIZE = 20
+DEFAULT_SPEED = 10
 
 check_errors = pygame.init()
 pygame.display.set_caption('PySnake!')
@@ -19,7 +18,7 @@ if check_errors[1] > 0:
     print('(!) Erreur, sortie du programme'. format(check_errors[1]))
     sys.exit(-1)
 else:
-    print('(+) PyGame initialisé avec succes !')
+    print('(+) PyGame initialise avec succes !')
 
 # Plateau
 playSurface = pygame.display.set_mode((WIDTH_IN_BLOCKS * BLOCK_SIZE, HEIGHT_IN_BLOCKS * BLOCK_SIZE))
@@ -29,6 +28,7 @@ red = pygame.Color(255, 0, 0)        # gameover
 green = pygame.Color(0, 255, 0)      # snake
 black = pygame.Color(0, 0, 0)        # score
 white = pygame.Color(255, 255, 255)  # background
+darkblue = pygame.Color('#0B1340')
 brown = pygame.Color(165, 42, 42)    # food
 
 # FPS
@@ -41,22 +41,34 @@ foodPos = [random.randrange(1, WIDTH_IN_BLOCKS) * BLOCK_SIZE, random.randrange(1
 foodSpawn = True
 direction = 'RIGHT'
 speed = DEFAULT_SPEED
-foodCounter = 0
 pause = False
-collision = False
+gameOver = False
+score = 0
 
 
 # game over :
 def game_over():
-    my_font = pygame.font.SysFont('Monaco', 72)
-    go_surf = my_font.render('Game Over !', True, red)
-    go_rect = go_surf.get_rect()
-    go_rect.midtop = (360, 15)
-    playSurface.blit(go_surf, go_rect)
-    pygame.display.flip()  # update de la window
-    time.sleep(14)
-    pygame.quit()
-    sys.exit()
+    header_font = pygame.font.SysFont('Monaco', 72)
+    options_font = pygame.font.SysFont('Monaco', 25)
+    header_font = header_font.render('Game Over !', True, red)
+    options_font = options_font.render('Enter to start new game, Esc to quit', True, red)
+    header_rect = header_font.get_rect()
+    header_rect.midtop = (360, 175)
+    options_rect = options_font.get_rect()
+    options_rect.midtop = (360, 135)
+    playSurface.blit(header_font, header_rect)
+    playSurface.blit(options_font, options_rect)
+
+
+def show_score(choice=1):
+    my_font = pygame.font.SysFont('sana', 24)
+    score_surf = my_font.render('Score : {0}'.format(score), True, red)
+    score_rect = score_surf.get_rect()
+    if choice == 1:
+        score_rect.midtop = (60, 10)
+    else:
+        score_rect.midtop = (360, 120)
+    playSurface.blit(score_surf, score_rect)
 
 
 # Jeu
@@ -86,6 +98,17 @@ while True:
                 pygame.event.post(pygame.event.Event(pygame.QUIT))
             if event.key == pygame.K_SPACE:
                 pause = not pause
+            if event.key == pygame.K_RETURN:
+                headPos = [100, 60]
+                snakeBody = [[100, 60], [80, 60], [60, 60]]
+                foodPos = [random.randrange(1, WIDTH_IN_BLOCKS) * BLOCK_SIZE,
+                           random.randrange(1, HEIGHT_IN_BLOCKS) * BLOCK_SIZE]
+                foodSpawn = True
+                direction = 'RIGHT'
+                speed = DEFAULT_SPEED + int(score / 3)
+                pause = False
+                gameOver = False
+                score = 0
 
     if direction == 'RIGHT' and not pause:
         headPos[0] += BLOCK_SIZE
@@ -97,24 +120,25 @@ while True:
         headPos[1] += BLOCK_SIZE
 
     # Gestion des collisions
-    if (headPos[0] > WIDTH_IN_BLOCKS * BLOCK_SIZE or headPos[0] < 0
-            or headPos[1] > HEIGHT_IN_BLOCKS * BLOCK_SIZE or headPos[1] < 0
-            or headPos in snakeBody[1:]):
-        collision = True
-        game_over()
+    if headPos[0] > (WIDTH_IN_BLOCKS * BLOCK_SIZE)-BLOCK_SIZE \
+            or headPos[0] < 0 \
+            or headPos[1] > (HEIGHT_IN_BLOCKS * BLOCK_SIZE)-BLOCK_SIZE \
+            or headPos[1] < 0 \
+            or headPos in snakeBody[1:]:
+        gameOver = True
 
-    # Mécanismes du corp du serpent
-    if not pause and not collision:
+    # Mecanismes du corp du serpent
+    if not pause and not gameOver:
         snakeBody.insert(0, list(headPos))
 
     if headPos[0] == foodPos[0] and headPos[1] == foodPos[1]:
         foodSpawn = False
-        foodCounter += 1
-        speed = DEFAULT_SPEED + foodCounter % 5
-    elif not pause and not collision:
+        score += 1
+        speed = DEFAULT_SPEED
+    elif not pause and not gameOver:
         snakeBody.pop()
 
-    # création du 
+    # creation du fuit
     if not foodSpawn:
         foodPos = [int(random.randrange(1, WIDTH_IN_BLOCKS) * BLOCK_SIZE), int(random.randrange(1, HEIGHT_IN_BLOCKS) * BLOCK_SIZE)]
         while foodPos in snakeBody:
@@ -122,15 +146,18 @@ while True:
                        int(random.randrange(1, HEIGHT_IN_BLOCKS) * BLOCK_SIZE)]
     foodSpawn = True
 
-    playSurface.fill(black)
+    playSurface.fill(darkblue)
 
     # dessin du serpent
     for pos in snakeBody:
         pygame.draw.rect(playSurface, green, pygame.Rect(pos[0], pos[1], BLOCK_SIZE, BLOCK_SIZE))
 
     # affichage du fruit
-    if foodSpawn:
-        pygame.draw.rect(playSurface, red, pygame.Rect(foodPos[0], foodPos[1], BLOCK_SIZE, BLOCK_SIZE))
+    pygame.draw.rect(playSurface, brown, pygame.Rect(foodPos[0], foodPos[1], BLOCK_SIZE, BLOCK_SIZE))
 
-    pygame.display.flip()
+    show_score()
+    if gameOver:
+        game_over()
+
+    pygame.display.flip()  # update de la window
     fpsController.tick(speed)
